@@ -1,0 +1,80 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model account {
+  id             Int              @id(map: "Account_pk") @default(autoincrement())
+  name           String           @unique(map: "ACCOUNT_name_key") @db.VarChar
+  account_report account_report[]
+  user_account   user_account[]
+}
+
+model account_report {
+  account_id Int
+  report_id  String  @db.VarChar
+  account    account @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "account_id_fk")
+  report     report  @relation(fields: [report_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "report_id_fk")
+
+  @@id([account_id, report_id], map: "ACCOUNT_REPORT_pkey")
+  @@index([account_id], map: "fki_account_id_fk")
+  @@index([report_id], map: "fki_report_id_fk")
+}
+
+model report {
+  id             String           @id(map: "Report_pk") @db.VarChar
+  name           String           @unique(map: "unique_name") @db.VarChar
+  url            String           @db.VarChar
+  account_report account_report[]
+  user           user[]
+  user_report    user_report[]
+}
+
+model role {
+  id           Int            @id(map: "Role_pk") @default(autoincrement())
+  name         String         @unique(map: "ROLE_name_key") @db.VarChar
+  user_account user_account[]
+}
+
+/// This model contains row level security and requires additional setup for migrations. Visit https://pris.ly/d/row-level-security for more info.
+model user {
+  id                String         @id(map: "User_pk") @db.VarChar
+  first_name        String
+  last_name         String
+  email             String         @unique(map: "USER_email_key")
+  sysadmin          Boolean
+  default_report_id String?        @db.VarChar
+  report            report?        @relation(fields: [default_report_id], references: [id], onUpdate: Restrict, map: "default_report_id_fk")
+  user_account      user_account[]
+  user_report       user_report[]
+
+  @@index([default_report_id], map: "fki_U")
+  @@index([id], map: "fki_default_report_id_fk")
+}
+
+model user_account {
+  user_id    String  @db.VarChar
+  account_id Int
+  role_id    Int?
+  account    account @relation(fields: [account_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "user_account_fk")
+  user       user    @relation(fields: [user_id], references: [id], onDelete: Cascade, onUpdate: Restrict, map: "user_fk")
+  role       role?   @relation(fields: [role_id], references: [id], onUpdate: Restrict, map: "user_role_fk")
+
+  @@id([user_id, account_id], map: "USER_ACCOUNT_pkey")
+  @@index([account_id], map: "fki_user_account_fk")
+  @@index([user_id], map: "fki_user_fk")
+  @@index([role_id], map: "fki_user_role_fk")
+}
+
+model user_report {
+  user_id   String @db.VarChar
+  report_id String @db.VarChar
+  report    report @relation(fields: [report_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "report_id")
+  user      user   @relation(fields: [user_id], references: [id], onDelete: NoAction, onUpdate: NoAction, map: "user_id")
+
+  @@id([user_id, report_id], map: "USER_REPORT_pkey")
+}
